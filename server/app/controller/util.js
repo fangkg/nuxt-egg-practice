@@ -1,12 +1,13 @@
 const svgCaptcha = require('svg-captcha');
-const Controller = require('egg').Controller;
 const BaseController = require('./base')
+const fse = require('fs-extra')
 
 class UtilController extends BaseController {
-//   async index() {
-//     const { ctx } = this;
-//     ctx.body = 'hi, egg';
-//   }
+    //   async index() {
+    //     const { ctx } = this;
+    //     ctx.body = 'hi, egg';
+    //   }
+    // 获取svg验证码
     async captcha() {
         const captcha = svgCaptcha.create({
             size: 4,
@@ -21,6 +22,7 @@ class UtilController extends BaseController {
         this.ctx.body = captcha.data;
     }
 
+    // 获取邮箱验证码
     async sendcode() {
         const { ctx } = this
         const email = ctx.query.email
@@ -34,10 +36,25 @@ class UtilController extends BaseController {
 
         const hasSend = await this.service.tools.sendMail(email, subject, text, html)
         if (hasSend) {
-            this.$message('发送成功！')
+            this.message('发送成功！')
         } else {
             this.error('发送失败')
         }
+    }
+
+    // 上传文件
+    async uploadfile() {
+        // 获取文件 放在静态资源目录下
+        const { ctx } = this
+        const file = ctx.request.files[0]
+        const { name } = ctx.request.body
+        console.log('name:', name, file)
+
+        // 移动文件目录
+        await fse.move(file.filepath, this.config.UPLOAD_DIR + '/' + file.filename);
+        this.success({
+            url: `/public/${file.filename}`
+        })
     }
 }
 

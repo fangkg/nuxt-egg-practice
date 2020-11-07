@@ -13,7 +13,7 @@ export default ({ store, redirect }) => {
         async config => {
             const token = localStorage.getItem('token')
             if (token) {
-                config.headers.common['Authorization'] = 'Bearer' + token
+                config.headers.common['Authorization'] = 'Bearer ' + token
             }
 
             return config
@@ -25,7 +25,7 @@ export default ({ store, redirect }) => {
         async response => {
             let { data } = response;
 
-            if (data.code === '-666') {
+            if (data.code === -666) {
                 MessageBox.confirm('登录已过期', '过期', {
                     confirmButtonText: '登录',
                     showCancelButton: false,

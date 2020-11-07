@@ -13,6 +13,8 @@ module.exports = app => {
   router.get('/captcha', controller.util.captcha);
   // 邮箱验证码
   router.get('/sendcode', controller.util.sendcode)
+  // 文件上传
+  router.post('/uploadfile', controller.util.uploadfile)
 
   // /user/register
   // /user/login
@@ -23,7 +25,7 @@ module.exports = app => {
 
     router.post('/register', register)
     router.post('/login', login)
-    router.get('/inof', jwt, info)
+    router.get('/info', jwt, info)
     router.get('/verify', verify)
   })
 };

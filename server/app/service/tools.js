@@ -1,15 +1,16 @@
 const { Service } = require('egg')
 const nodemailer = require('nodemailer')
 
-const userEmail = '838692260@qq.com'
+const userEmail = 'fangkg1107@126.com'
 const transporter = nodemailer.createTransport({
-    service: 'qq',
+    service: '126',
     secureConnection: true,
     auth: {
         user: userEmail,
-        pass: '0326gefang0'
+        pass: 'YUEHAXFZMIRVGLMB'
     }
 })
+
 
 class ToolService extends Service {
     async sendMail(email, subject, text, html) {

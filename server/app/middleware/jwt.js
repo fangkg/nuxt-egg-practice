@@ -6,13 +6,13 @@ module.exports = ({ app }) => {
     return async function verify(ctx, next) {
         if (!ctx.request.header.authorization) {
             ctx.body = {
-                code: '-666',
+                code: -666,
                 message: '用户没有登录'
             }
             return
         }
 
-        const token = ctx.request.header.authorization.replace('Bearer', '')
+        const token = ctx.request.header.authorization.replace('Bearer ', '')
 
         // 解析token
         try {
@@ -25,7 +25,7 @@ module.exports = ({ app }) => {
         } catch (err) {
             if (err.name === 'TokenExpiredError') {
                 ctx.body = {
-                    code: '-666',
+                    code: -666,
                     message: '登录过期了！'
                 }
             } else {
