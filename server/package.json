@@ -15,6 +15,7 @@
     "husky": "^4.3.0",
     "jsonwebtoken": "^8.5.1",
     "md5": "^2.3.0",
+    "nodemailer": "^6.4.15",
     "svg-captcha": "^1.4.0"
   },
   "devDependencies": {
