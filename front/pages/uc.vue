@@ -20,7 +20,6 @@
 </template>
 
 <script>
-import { resolve } from 'dns'
 import sparkMD5 from 'spark-md5'
 // 文件切片大小为1M
 const CHUNK_SIZE = 1 * 1024 * 1024
