@@ -45,13 +45,14 @@ class UtilController extends BaseController {
     // 上传文件
     async uploadfile() {
         // 获取文件 放在静态资源目录下
+        console.log('enter uploadfile')
         const { ctx } = this
         const file = ctx.request.files[0]
         const { name } = ctx.request.body
         console.log('name:', name, file)
 
         // 移动文件目录
-        await fse.move(file.filepath, this.config.UPLOAD_DIR + '/' + file.filename);
+        const ret = await fse.move(file.filepath, this.config.UPLOAD_DIR + '/' + file.filename);
         this.success({
             url: `/public/${file.filename}`
         })
