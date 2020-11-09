@@ -2,7 +2,7 @@
     <div class="login-container">
         <el-form class="login-form" label-width="100px" :model="form" :rules="rules" ref="loginFormRef">
             <div class="title-container">
-                <img src="/logo.png" alt="">
+                <!-- <img src="/logo.png" alt=""> -->
             </div>
             <el-form-item prop="email" label="邮箱">
                 <el-input v-model="form.email" placeholder="请输入邮箱"></el-input>
