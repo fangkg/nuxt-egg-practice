@@ -16,19 +16,57 @@
             <span>计算hash的进度</span>
             <el-progress :stroke-width='20' :text-inside="true" :percentage='hashProgress'></el-progress>
         </div>
+        <div>
+            <!-- chunk.progress progress < 0报错 显示红色 === 100 成功 显示绿色 -->
+            <!-- 尽可能让方块看起来是正方形 3*3 4*4 -->
+            <div class="cube-container" :style="{ width: cubeWidth + 'px' }">
+                <div class="cube" v-for="chunk in chunks" :key="chunk.name">
+                    <!-- 状态判定 -->
+                    <div
+                        :class = "{
+                            'uploading': chunk.progress > 0 && chunk.progress < 100,
+                            'success': chunk.progress === 100,
+                            'error': chunk.progress < 0
+                        }"
+                        :style = "{
+                            height: chunk.progress + '%'
+                        }">
+                    <!-- 显示进度 -->
+                    <i class="el-icon-loading" style="color: #f56c6c" v-if="chunk.progress < 100 && chunk.progress > 0"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script>
 import sparkMD5 from 'spark-md5'
+import { off } from 'process'
 // 文件切片大小为1M
 const CHUNK_SIZE = 1 * 1024 * 1024
 export default {
     data() {
         return {
             file: null,
-            uploadProgress: 0,
-            hashProgress: 0
+            // uploadProgress: 0,
+            hashProgress: 0,
+            chunks: []
+        }
+    },
+    computed: {
+        cubeWidth() {
+            // 平方根向上取整
+            return Math.ceil(Math.sqrt(this.chunks.length)) * 16
+        },
+        uploadProgress() {
+            if (!this.file || this.chunks.length) {
+                return 0
+            }
+            // 已经上传的进度累加
+            const loaded = this.chunks.map(item => item.chunk.size * item.progress)
+                                        .reduce((acc, crr) => acc + cur, 0) // reduce初始值为0
+            return parseFloat(((loaded * 100) / this.file.size).toFixed(2))
         }
     },
     methods: {
@@ -48,11 +86,27 @@ export default {
             }
             // 图片切片
             const chunks = this.createFileChunk(this.file)
-            // 计算hash
-            const hash = await this.calculateHashWorker()
+            // 计算hashWorker
+            // const hashWorker = await this.calculateHashWorker()
             // 计算hashIdle
-            const hashIdle = await this.calculateHashIdle()
-            console.log('hash:', hash, hashIdle)
+            // const hashIdle = await this.calculateHashIdle()
+            // 抽样hash
+            const hashSample = await this.calculateHashSample()
+            console.log('hash:', hashSample)
+            this.hash = hashSample
+            // 变成结构化数据
+            this.chunks = chunks.map((chunk, index) => {
+                // 切片名字 hash + index
+                const name = hash + '-' + index
+                return {
+                    hash,
+                    name,
+                    index,
+                    chunk: chunk.file,
+                    progress: 0
+                }
+            })
+            await this.uploadChunks()
             // 图片转成二进制上传
             const form = new FormData()
             form.append('name', 'file')
@@ -194,8 +248,76 @@ export default {
                 }
                 window.requestIdleCallback(workLoop)
             })
-        }
+        },
 
+        // 抽样hash 布隆过滤器 损失精度换效率 hash一样文件不一定一样 hash不一样文件一定不一样
+        async calculateHashSample() {
+            return new Promise(resolve => {
+                const spark = new sparkMD5.ArrayBuffer()
+                const reader = new FileReader()
+
+                const file = this.file
+                const size = file.size
+                const offset = 2 * 1024 * 1024
+                // 第一个2M 最后一个区块数据全要 中间的 取前中后各2个字节
+                let chunks = [file.slice(0, offset)]
+                let cur = offset
+                while(cur < size) {
+                    if (cur + offset >= size) {
+                        // 最后一个
+                        chunks.push(file.slice(cur, cur + offset))
+                    } else {
+                        // 中间区块
+                        const mid = cur + offset / 2
+                        const end = cur + offset
+                        chunks.push(file.slice(cur, cur + 2))
+                        chunks.push(file.slice(mid, mid + 2))
+                        chunks.push(end -2, end)
+                    }
+                    // 抽样完成累加
+                    cur += offset
+                }
+                // 中间的 取前中后各2个字节
+                reader.readAsArrayBuffer(new Blob(chunks))
+                reader.onload = e => {
+                    spark.append(e.target.result)
+                    this.hashProgress = 100
+                    resolve(spark.end())
+                }
+            })
+        },
+
+        // 上传chunks
+        async uploadChunks() {
+            const requests = this.chunks.map((chunk, index) => {
+                // 转成form
+                const form = new FormData()
+                form.append('chunk', chunk.chunk)
+                form.append('hash', chunk.hash)
+                form.append('name', chunk.name)
+                // form.append('index', chunk.index)
+                return form
+            }).map((form, index) => {
+                this.$http.post('/uploadfile', form, {
+                    onUploadProgress: progress => {
+                        // 不是整体进度条 而是每个区块有自己的进度条，整体进度条需要计算
+                        this.chunks[index].progress = Number(((progress.loaded / progress.total) * 100).toFixed(2))
+                    }
+                })
+            })
+            // 发送全部请求 异步并发量控制
+            await Promise.all(requests)
+            // 合并文件
+            await this.mergeRequest()
+        },
+
+        async mergeRequest() {
+            this.$http.post('mergeFile', {
+                ext: this.file.name.split('.').pop(),
+                size: CHUNK_SIZE,
+                hash: this.hash
+            })
+        }
     },
     async mounted() {
        const ret = await this.$http.get('/user/info')
@@ -215,4 +337,18 @@ export default {
     vertical-align middle
     &:hover
         border-color red
+.cube-container
+    .cube
+        width 14px
+        height 14px
+        line-height 12px
+        border 1px black solid
+        background #eee
+        float left
+        >.success
+            background green
+        >.uploading
+            background blue
+        >.error
+            background red
 </style>
