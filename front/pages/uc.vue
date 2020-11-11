@@ -79,6 +79,9 @@ export default {
 
         // 上传图片
         async uploadFile() {
+            if (!this.file) {
+                return
+            }
             // 判断是否为图片
             if (! await this.isImage(this.file)) {
                 alert('文件格式不对！')
@@ -94,6 +97,17 @@ export default {
             const hashSample = await this.calculateHashSample()
             console.log('hash:', hashSample)
             this.hash = hashSample
+
+            // 向后端询问文件是否上传过，如果没有是否存在切片
+            const { data: { uploaded, uploadedList } }= await this.$http.post('/checkfile', {
+                hash: this.hash,
+                ext: this.file.name.split('.').pop()
+            })
+
+            // 已经上传过 秒传
+            if (uploaded) {
+                return this.$message.success('秒传成功！')
+            }
             // 变成结构化数据
             this.chunks = chunks.map((chunk, index) => {
                 // 切片名字 hash + index
@@ -103,7 +117,8 @@ export default {
                     name,
                     index,
                     chunk: chunk.file,
-                    progress: 0
+                    // 设置进度条 已经上传的 设置为100
+                    progress: uploadedList.indexOf(name) > -1 ? 100 : 0
                 }
             })
             await this.uploadChunks()
@@ -288,16 +303,18 @@ export default {
         },
 
         // 上传chunks
-        async uploadChunks() {
-            const requests = this.chunks.map((chunk, index) => {
+        async uploadChunks(uploadedList = []) {
+            const requests = this.chunks
+                .filter(chunk => uploadedList.indexOf(chunk.name) === -1)
+                .map((chunk, index) => {
                 // 转成form
                 const form = new FormData()
                 form.append('chunk', chunk.chunk)
                 form.append('hash', chunk.hash)
                 form.append('name', chunk.name)
                 // form.append('index', chunk.index)
-                return form
-            }).map((form, index) => {
+                return { form, index: chunk.index, error: 0 }
+            }).map(({form, index}) => {
                 this.$http.post('/uploadfile', form, {
                     onUploadProgress: progress => {
                         // 不是整体进度条 而是每个区块有自己的进度条，整体进度条需要计算
@@ -305,8 +322,10 @@ export default {
                     }
                 })
             })
-            // 发送全部请求 异步并发量控制
-            await Promise.all(requests)
+            // 发送全部请求 异步并发量控制 
+            // 尝试建立tcp连接过多也会导致卡顿
+            // await Promise.all(requests)
+            await this.sendRequest(requests)
             // 合并文件
             await this.mergeRequest()
         },
@@ -317,6 +336,63 @@ export default {
                 size: CHUNK_SIZE,
                 hash: this.hash
             })
+        },
+
+        // 限制并发请求数量
+        // 上传可能报错 报错之后进度条变红开始重试 一个切片重试失效三次 整体全部终止
+        async sendRequest(chunks, limit = 4) {
+            // limit并发数
+            const len = chunks.length
+            let count = 0
+            // 全局开关
+            let isStop = false
+            const start = async () => {
+                // 错误次数达到最大次数不再重新连接
+                if (isStop) {
+                    return
+                }
+                // 弹出一个任务
+                const task = chunks.shift()
+                if(task) {
+                    const { form, index } = task
+                    try {
+                        await this.$http.post('/uploadfile', form, {
+                            onUploadProgress: progress => {
+                                this.chunks[index].progress = Number(((progress.loaded / progress.total) * 100).toFixed(2))
+                            }
+                        })
+                        if (count === len -1) {
+                            // 最后一个任务
+                            resolve()
+                        } else {
+                            count ++
+                            // 启动下一个任务
+                            start()
+                        }
+                    } catch(e) {
+                        this.chunks[index].progress = -1
+                        // 报错次数小于3重试
+                        if (task.error < 3) {
+                            task.error ++
+                            chunks.unshift(task)
+                            start()
+                        } else {
+                            // 报错次数大于3
+                            isStop = true
+                            reject()
+                        }  
+                    }
+                }
+            }
+            // 启动limit个任务
+            while(limit > 0) {
+                // 模拟延时
+                setTimeout(() => {
+                    start()
+                }, Math.random() * 2000)
+                // start()
+                limit -= 1
+            }
         }
     },
     async mounted() {

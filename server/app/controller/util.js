@@ -45,6 +45,10 @@ class UtilController extends BaseController {
 
     // 上传文件
     async uploadfile() {
+        // 上传文件报错
+        if (Math.random() > 0.5) {
+            return this.ctx.status = 500
+        }
         // public/hash/name{hash+index}
         // 获取文件 放在静态资源目录下
         const { ctx } = this
@@ -76,6 +80,32 @@ class UtilController extends BaseController {
         this.success({
             url: `/public/${hash}.${ext}`
         })
+    }
+
+    // 检查文件是否上传过
+    async checkfile() {
+        const { ctx } = this
+        const { ext, hash } = ctx.request.body
+        const filePath = path.resolve(this.config.UPLOAD_DIR, `${hash}.${ext}`)
+
+        let uploaded = false
+        let uploadedList = []
+        if (fse.existsSync(filePath)) {
+            // 文件存在
+            uploaded = true
+        } else {
+            uploadedList = await this.getUploadedList(path.resolve(this.config.UPLOAD_DIR, hash))
+        }
+
+        this.success({
+            uploaded,
+            uploadedList
+        })
+    }
+
+    // 获取已上传文件列表
+    async getUploadedList(dirPath) {
+        return fse.existsSync(dirPath) ? (await (await fse.readdir(dirPath)).filter(name => name[0] !== '.')) : []
     }
 }
 

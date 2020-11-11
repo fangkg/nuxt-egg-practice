@@ -17,6 +17,8 @@ module.exports = app => {
   router.post('/uploadfile', controller.util.uploadfile)
   // 文件合并
   router.post('/mergeFile', controller.util.mergeFile)
+  // 检查文件是否上传过
+  router.post('/checkfile', controller.util.checkfile)
 
   // /user/register
   // /user/login
