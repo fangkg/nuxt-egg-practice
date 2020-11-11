@@ -1,6 +1,6 @@
 const { Service } = require('egg')
 const nodemailer = require('nodemailer')
-const fse = require('fse-extra')
+const fse = require('fs-extra')
 const { WriteStream } = require('fs-extra')
 const path = require('path')
 

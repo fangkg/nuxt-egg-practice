@@ -13,6 +13,8 @@
     "@nuxtjs/axios": "^5.12.2",
     "core-js": "^3.6.5",
     "element-ui": "^2.13.2",
+    "highlight.js": "^10.3.2",
+    "marked": "^1.2.3",
     "md5": "^2.3.0",
     "nuxt": "^2.14.6",
     "spark-md5": "^3.0.1",
