@@ -1,8 +1,63 @@
 <template>
   <div>
-    <Nuxt />
+    <!-- <Nuxt /> -->
+    <el-container>
+      <el-header>
+        <el-menu mode="horizontal">
+          <el-menu-item index="0">
+            <img src="/logo.png" alt="">
+          </el-menu-item>
+          <el-menu-item>
+            <nuxt-link to="/"></nuxt-link>
+          </el-menu-item>
+          <el-menu-item v-if="userInfo.id">
+            <a>退出</a>
+          </el-menu-item>
+          <el-menu-item v-if="userInfo.id">
+            <a>{{ userInfo.nickname }}</a>
+          </el-menu-item>
+          <el-menu-item v-if="userInfo.id">
+            <nuxt-link to="/editor/new">写文章</nuxt-link>
+          </el-menu-item>
+          <el-munu-item v-if="!userInfo.id">
+            <nuxt-link to="/editor/new">注册</nuxt-link>
+          </el-munu-item>
+          <el-menu-item v-if="!userInfo.id">
+            <nuxt-link to="/editor/new">登录</nuxt-link>
+          </el-menu-item>
+        </el-menu>
+      </el-header>
+      <el-main>
+        <nuxt/>
+      </el-main>
+      <el-footer>
+
+      </el-footer>
+    </el-container>
   </div>
 </template>
+
+<script>
+export default {
+  computed: {
+    userInfo() {
+      return this.$store.state.user
+    }
+  },
+  methods: {
+    async getUserInfo() {
+      const token = localStorage.getItem('token')
+      if (token) {
+        // 用户存在 已登录
+        this.$store.dispatch('user/detail')
+      }
+    }
+  },
+  mounted() {
+    this.getUserInfo()
+  }
+}
+</script>
 
 <style>
 html {

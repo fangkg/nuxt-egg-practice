@@ -1,5 +1,6 @@
 <template>
     <div>
+        <div contenteditable="true">哈哈</div>
         <div class="write-btn">
             <el-button @click="submit" type="primary">提交</el-button>
         </div>

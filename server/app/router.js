@@ -31,5 +31,6 @@ module.exports = app => {
     router.post('/login', login)
     router.get('/info', jwt, info)
     router.get('/verify', verify)
+    router.get('/detail', jwt, info)
   })
 };
